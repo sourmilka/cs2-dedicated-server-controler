@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS2 Server Controller</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/ekmas/cs16.css@main/css/cs16.min.css">
+    <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+    <!-- ====== TITLE BAR ====== -->
+    <div class="app-titlebar">
+        <div class="titlebar-left">
+            <span class="titlebar-icon">&#9670;</span>
+            <span class="titlebar-text">CS2 Dedicated Server Controller</span>
+        </div>
+        <div class="titlebar-right">
+            <div id="connectionIndicator" class="conn-indicator disconnected">
+                <span class="conn-dot"></span>
+                <span id="connStatusText">Disconnected</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== MAIN APPLICATION ====== -->
+    <div class="app-container">
+
+        <!-- ====== TAB BAR ====== -->
+        <div class="tab-bar">
+            <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+            <button class="tab-btn" data-tab="console">Console</button>
+            <button class="tab-btn" data-tab="players">Players</button>
+            <button class="tab-btn" data-tab="maps">Maps</button>
+            <button class="tab-btn" data-tab="settings">Settings</button>
+            <button class="tab-btn" data-tab="quick">Quick Cmds</button>
+            <button class="tab-btn" data-tab="templates">Templates</button>
+            <button class="tab-btn" data-tab="configs">Configs</button>
+        </div>
+
+        <!-- ====== TAB PANELS ====== -->
+        <div class="tab-panels">
+
+            <!-- ==================== DASHBOARD ==================== -->
+            <div class="tab-panel active" id="panel-dashboard">
+                <div class="dashboard-grid">
+                    <!-- Connection Box -->
+                    <div class="cs16-box">
+                        <div class="box-title">Connection</div>
+                        <div class="box-content">
+                            <div class="form-row">
+                                <label class="cs-input__label" for="inp-host">Server Address</label>
+                                <input type="text" class="cs-input" id="inp-host" placeholder="connect.absolo.dev" style="width:220px">
+                            </div>
+                            <div class="form-row">
+                                <label class="cs-input__label" for="inp-port">Port</label>
+                                <input type="number" class="cs-input" id="inp-port" value="27015" style="width:100px">
+                            </div>
+                            <div class="form-row">
+                                <label class="cs-input__label" for="inp-password">RCON Password</label>
+                                <input type="password" class="cs-input" id="inp-password" placeholder="password" style="width:220px">
+                            </div>
+                            <div class="form-row btn-row">
+                                <button class="cs-btn" id="btn-connect" onclick="App.connect()">Connect</button>
+                                <button class="cs-btn" id="btn-disconnect" onclick="App.disconnect()" disabled>Disconnect</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Server Info Box -->
+                    <div class="cs16-box">
+                        <div class="box-title">Server Info</div>
+                        <div class="box-content" id="serverInfoContent">
+                            <div class="info-placeholder">Connect to server to see info</div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats Box -->
+                    <div class="cs16-box">
+                        <div class="box-title">Quick Stats</div>
+                        <div class="box-content" id="quickStatsContent">
+                            <div class="info-placeholder">No data</div>
+                        </div>
+                    </div>
+
+                    <!-- Server Chat Box -->
+                    <div class="cs16-box">
+                        <div class="box-title">Server Chat</div>
+                        <div class="box-content">
+                            <div class="form-row">
+                                <input type="text" class="cs-input" id="inp-say" placeholder="Type a message..." style="width:100%" onkeydown="if(event.key==='Enter')App.say()">
+                            </div>
+                            <div class="form-row btn-row">
+                                <button class="cs-btn" onclick="App.say()">Send Message</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions Box -->
+                    <div class="cs16-box">
+                        <div class="box-title">Quick Actions</div>
+                        <div class="box-content">
+                            <div class="quick-actions-grid">
+                                <button class="cs-btn qa-btn" onclick="App.dashAction('mp_restartgame 1')">Restart Round</button>
+                                <button class="cs-btn qa-btn" onclick="App.dashAction('mp_warmup_end')">End Warmup</button>
+                                <button class="cs-btn qa-btn" onclick="App.dashAction('mp_pause_match')">Pause Match</button>
+                                <button class="cs-btn qa-btn" onclick="App.dashAction('mp_unpause_match')">Unpause</button>
+                                <button class="cs-btn qa-btn" onclick="App.dashAction('mp_swapteams')">Swap Teams</button>
+                                <button class="cs-btn qa-btn" onclick="App.dashAction('bot_kick')">Kick Bots</button>
+                                <button class="cs-btn qa-btn" onclick="App.dashAction('changelevel de_dust2')">de_dust2</button>
+                                <button class="cs-btn qa-btn" onclick="App.dashAction('changelevel de_mirage')">de_mirage</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Command History Box -->
+                    <div class="cs16-box">
+                        <div class="box-title">Recent Commands</div>
+                        <div class="box-content" id="recentCommandsContent">
+                            <div class="info-placeholder">No commands yet</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== CONSOLE ==================== -->
+            <div class="tab-panel" id="panel-console">
+                <div class="console-wrapper">
+                    <div class="console-output" id="consoleOutput">
+                        <div class="console-line sys">CS2 Server Controller Console Ready</div>
+                        <div class="console-line sys">Type commands below or use other tabs for GUI controls.</div>
+                        <div class="console-line sys">Use ↑/↓ arrow keys to navigate command history.</div>
+                    </div>
+                    <div class="console-input-row">
+                        <span class="console-prompt">]</span>
+                        <input type="text" class="cs-input console-input" id="consoleInput" placeholder="Enter RCON command..." autocomplete="off" onkeydown="App.consoleKeyDown(event)">
+                        <button class="cs-btn" onclick="App.sendCommand()">Send</button>
+                    </div>
+                    <div class="console-toolbar">
+                        <button class="cs-btn" onclick="App.clearConsole()">Clear</button>
+                        <button class="cs-btn" onclick="App.sendCommand('status')">Status</button>
+                        <button class="cs-btn" onclick="App.sendCommand('maps *')">Maps</button>
+                        <button class="cs-btn" onclick="App.sendCommand('sv_cheats')">sv_cheats</button>
+                        <button class="cs-btn" onclick="App.sendCommand('mp_maxrounds')">mp_maxrounds</button>
+                        <button class="cs-btn" onclick="App.sendCommand('bot_kick')">Kick Bots</button>
+                        <button class="cs-btn" onclick="App.sendCommand('mp_restartgame 1')">Restart</button>
+                        <button class="cs-btn" onclick="App.exportConsole()">Export Log</button>
+                    </div>
+                    <!-- Console Command Reference -->
+                    <div class="console-reference">
+                        <div class="ref-title">Common Commands Reference</div>
+                        <div class="ref-grid">
+                            <div class="ref-item" onclick="App.sendCommand('status')"><span class="ref-cmd">status</span><span class="ref-desc">Server status & players</span></div>
+                            <div class="ref-item" onclick="App.sendCommand('maps *')"><span class="ref-cmd">maps *</span><span class="ref-desc">List available maps</span></div>
+                            <div class="ref-item" onclick="App.sendCommand('mp_restartgame 1')"><span class="ref-cmd">mp_restartgame 1</span><span class="ref-desc">Restart game</span></div>
+                            <div class="ref-item" onclick="App.sendCommand('mp_warmup_end')"><span class="ref-cmd">mp_warmup_end</span><span class="ref-desc">End warmup</span></div>
+                            <div class="ref-item" onclick="App.sendCommand('bot_add')"><span class="ref-cmd">bot_add</span><span class="ref-desc">Add a bot</span></div>
+                            <div class="ref-item" onclick="App.sendCommand('bot_kick')"><span class="ref-cmd">bot_kick</span><span class="ref-desc">Remove all bots</span></div>
+                            <div class="ref-item" onclick="App.sendCommand('sv_cheats 1')"><span class="ref-cmd">sv_cheats 1</span><span class="ref-desc">Enable cheats</span></div>
+                            <div class="ref-item" onclick="App.sendCommand('host_writeconfig')"><span class="ref-cmd">host_writeconfig</span><span class="ref-desc">Save config</span></div>
+                            <div class="ref-item" onclick="App.sendCommand('mp_pause_match')"><span class="ref-cmd">mp_pause_match</span><span class="ref-desc">Pause the match</span></div>
+                            <div class="ref-item" onclick="App.sendCommand('mp_unpause_match')"><span class="ref-cmd">mp_unpause_match</span><span class="ref-desc">Unpause match</span></div>
+                            <div class="ref-item" onclick="App.sendCommand('exec server.cfg')"><span class="ref-cmd">exec server.cfg</span><span class="ref-desc">Execute server config</span></div>
+                            <div class="ref-item" onclick="App.sendCommand('banlist')"><span class="ref-cmd">banlist</span><span class="ref-desc">Show ban list</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== PLAYERS ==================== -->
+            <div class="tab-panel" id="panel-players">
+                <div class="panel-header">
+                    <span class="panel-header-text">Player Management</span>
+                    <div class="panel-header-actions">
+                        <button class="cs-btn" onclick="App.refreshPlayers()">Refresh</button>
+                        <button class="cs-btn" id="btn-auto-refresh" onclick="App.toggleAutoRefresh()">Auto: OFF</button>
+                    </div>
+                </div>
+                <hr class="cs-hr">
+
+                <!-- Player Stats Bar -->
+                <div class="player-stats-bar" id="playerStatsBar">
+                    <div class="stat-chip"><span class="stat-label">Total:</span> <span id="statTotalPlayers">0</span></div>
+                    <div class="stat-chip"><span class="stat-label">Humans:</span> <span id="statHumanPlayers">0</span></div>
+                    <div class="stat-chip"><span class="stat-label">Bots:</span> <span id="statBotPlayers">0</span></div>
+                </div>
+
+                <!-- Player Quick Actions -->
+                <div class="player-quick-actions">
+                    <button class="cs-btn" onclick="App.dashAction('bot_add_t')">Add T Bot</button>
+                    <button class="cs-btn" onclick="App.dashAction('bot_add_ct')">Add CT Bot</button>
+                    <button class="cs-btn" onclick="App.dashAction('bot_kick')">Kick All Bots</button>
+                    <button class="cs-btn" onclick="App.dashAction('mp_scrambleteams')">Scramble</button>
+                </div>
+
+                <!-- Broadcast Message -->
+                <div class="cs16-box" style="margin-top:8px;margin-bottom:8px">
+                    <div class="box-title">Broadcast to Players</div>
+                    <div class="box-content">
+                        <div class="form-row">
+                            <input type="text" class="cs-input" id="inp-broadcast" placeholder="Message to all players..." style="flex:1" onkeydown="if(event.key==='Enter')App.broadcastMessage()">
+                            <button class="cs-btn" onclick="App.broadcastMessage()">Send</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="playersContainer">
+                    <div class="info-placeholder">Connect to server and click Refresh</div>
+                </div>
+            </div>
+
+            <!-- ==================== MAPS ==================== -->
+            <div class="tab-panel" id="panel-maps">
+                <div class="panel-header">
+                    <span class="panel-header-text">Map Management</span>
+                    <span id="currentMapDisplay" class="current-map-badge"></span>
+                </div>
+                <hr class="cs-hr">
+                <div class="sub-tab-bar">
+                    <button class="sub-tab-btn active" data-subtab="mappool" data-group="maps">Map Pool</button>
+                    <button class="sub-tab-btn" data-subtab="workshop" data-group="maps">Workshop</button>
+                </div>
+
+                <!-- Map Pool -->
+                <div class="sub-tab-panel active" id="subpanel-mappool" data-group="maps">
+                    <div id="mapPoolContainer"></div>
+                </div>
+
+                <!-- Workshop -->
+                <div class="sub-tab-panel" id="subpanel-workshop" data-group="maps">
+                    <!-- Browse Steam Workshop Link -->
+                    <div class="cs16-box" style="margin-bottom:12px">
+                        <div class="box-title">Browse Steam Workshop</div>
+                        <div class="box-content" style="text-align:center">
+                            <p style="color:var(--text-3);font-size:0.875rem;margin:0 0 8px">Find new maps on the Steam Workshop, then paste the URL or ID below to add them.</p>
+                            <a class="cs-btn steam-browse-btn" href="https://steamcommunity.com/workshop/browse/?appid=730&searchtext=&childpublishedfileid=0&browsesort=textsearch&section=readytouseitems&created_date_range_filter_start=0&created_date_range_filter_end=0&updated_date_range_filter_start=0&updated_date_range_filter_end=0" target="_blank" style="text-decoration:none;display:inline-block">
+                                Browse CS2 Workshop on Steam
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Add Workshop Map -->
+                    <div class="cs16-box" style="margin-bottom:12px">
+                        <div class="box-title">Add Workshop Map</div>
+                        <div class="box-content">
+                            <div class="form-row">
+                                <label class="cs-input__label">Map Name</label>
+                                <input type="text" class="cs-input" id="inp-ws-name" placeholder="Map name" style="width:200px">
+                            </div>
+                            <div class="form-row">
+                                <label class="cs-input__label">Workshop ID or URL</label>
+                                <input type="text" class="cs-input" id="inp-ws-id" placeholder="Steam Workshop URL or ID" style="width:300px">
+                            </div>
+                            <div class="form-row btn-row">
+                                <button class="cs-btn" onclick="App.addWorkshopMap()">Add Map</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="workshopMapsContainer"></div>
+                </div>
+            </div>
+
+            <!-- ==================== SETTINGS ==================== -->
+            <div class="tab-panel" id="panel-settings">
+                <div class="panel-header">
+                    <span class="panel-header-text">Server Settings (CVars)</span>
+                    <div class="panel-header-actions">
+                        <button class="cs-btn" id="btn-load-settings" onclick="App.loadAllServerValues()">Load from Server</button>
+                        <button class="cs-btn" onclick="App.applyAllSettings()">Apply All Changes</button>
+                    </div>
+                </div>
+                <div class="settings-info">Values shown are read live from the server. Edit and apply to change.</div>
+                <hr class="cs-hr">
+                <div id="settingsSubTabBar" class="sub-tab-bar"></div>
+                <div id="settingsSubPanels"></div>
+            </div>
+
+            <!-- ==================== QUICK COMMANDS ==================== -->
+            <div class="tab-panel" id="panel-quick">
+                <div class="panel-header">
+                    <span class="panel-header-text">Quick Commands</span>
+                </div>
+                <hr class="cs-hr">
+                <div id="quickCommandsContainer"></div>
+            </div>
+
+            <!-- ==================== TEMPLATES ==================== -->
+            <div class="tab-panel" id="panel-templates">
+                <div class="panel-header">
+                    <span class="panel-header-text">Config Templates</span>
+                    <span class="panel-header-sub">Click Apply to load a preset configuration onto the server</span>
+                </div>
+                <hr class="cs-hr">
+                <div id="templatesContainer"></div>
+            </div>
+
+            <!-- ==================== CONFIGS ==================== -->
+            <div class="tab-panel" id="panel-configs">
+                <div class="panel-header">
+                    <span class="panel-header-text">Configuration Files</span>
+                    <div class="panel-header-actions">
+                        <button class="cs-btn" onclick="App.refreshConfigs()">Refresh</button>
+                    </div>
+                </div>
+                <hr class="cs-hr">
+
+                <!-- Export Config -->
+                <div class="cs16-box" style="margin-bottom:12px">
+                    <div class="box-title">Export Current Settings</div>
+                    <div class="box-content">
+                        <div class="form-row">
+                            <label class="cs-input__label">Config Name</label>
+                            <input type="text" class="cs-input" id="inp-config-name" placeholder="my_config" style="width:200px">
+                        </div>
+                        <div class="form-row btn-row">
+                            <button class="cs-btn" onclick="App.exportConfig()">Export to .cfg</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Command Config -->
+                <div class="cs16-box" style="margin-bottom:12px">
+                    <div class="box-title">Write Custom Config</div>
+                    <div class="box-content">
+                        <p style="color:var(--text-3);font-size:0.8125rem;margin:0 0 6px">Write raw commands (one per line) and execute or save them.</p>
+                        <textarea class="cs-input config-textarea" id="customConfigEditor" placeholder="// Enter commands one per line&#10;mp_maxrounds 24&#10;mp_freezetime 15&#10;mp_buytime 20" style="height:140px"></textarea>
+                        <div class="form-row btn-row" style="margin-top:8px">
+                            <button class="cs-btn" onclick="App.execCustomConfig()">Execute on Server</button>
+                            <button class="cs-btn" onclick="App.saveCustomConfig()">Save as .cfg</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Saved configs list -->
+                <div class="cs16-box" style="margin-bottom:12px">
+                    <div class="box-title">Saved Config Files</div>
+                    <div class="box-content" id="savedConfigsContainer">
+                        <div class="info-placeholder">No saved configs</div>
+                    </div>
+                </div>
+
+                <!-- Config Viewer -->
+                <div class="cs16-box" id="configViewer" style="display:none;margin-top:12px">
+                    <div class="box-title" id="configViewerTitle">Config File</div>
+                    <div class="box-content">
+                        <textarea class="cs-input config-textarea" id="configViewerContent" readonly></textarea>
+                        <div class="form-row btn-row" style="margin-top:8px">
+                            <button class="cs-btn" onclick="App.execConfigContent()">Execute on Server</button>
+                            <button class="cs-btn" onclick="App.deleteConfig()">Delete</button>
+                            <button class="cs-btn" onclick="document.getElementById('configViewer').style.display='none'">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /tab-panels -->
+    </div><!-- /app-container -->
+
+    <!-- ====== TOAST NOTIFICATION ====== -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- ====== STATUS BAR ====== -->
+    <div class="app-statusbar">
+        <span id="statusBarLeft">Ready</span>
+        <span id="statusBarRight">CS2 Server Controller v2.1</span>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
