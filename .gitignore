@@ -38,3 +38,5 @@ last_connection.json
 
 # Vercel
 .vercel/
+.vercel
+.env*.local
