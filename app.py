@@ -21,6 +21,15 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 CORS(app)  # Allow cross-origin requests from any port
 
+# Detect Vercel serverless environment (read-only filesystem)
+IS_VERCEL = os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV')
+DATA_DIR = '/tmp' if IS_VERCEL else os.path.dirname(__file__)
+
+
+def data_path(*parts: str) -> str:
+    """Return writable data path — uses /tmp on Vercel, local dir otherwise."""
+    return os.path.join(DATA_DIR, *parts)
+
 # Global RCON client instance
 rcon = RCONClient()
 
@@ -909,11 +918,21 @@ def api_maps():
 
 # ============== WORKSHOP MAPS ==============
 
-WORKSHOP_MAPS_FILE = os.path.join(os.path.dirname(__file__), 'workshop_maps.json')
+WORKSHOP_MAPS_FILE = data_path('workshop_maps.json')
+
+
+def _init_workshop_maps():
+    """Copy bundled workshop_maps.json to writable dir on first run (Vercel)."""
+    if IS_VERCEL and not os.path.exists(WORKSHOP_MAPS_FILE):
+        src = os.path.join(os.path.dirname(__file__), 'workshop_maps.json')
+        if os.path.exists(src):
+            import shutil
+            shutil.copy2(src, WORKSHOP_MAPS_FILE)
 
 
 def load_workshop_maps() -> list:
     """Load saved workshop maps from JSON file."""
+    _init_workshop_maps()
     if os.path.exists(WORKSHOP_MAPS_FILE):
         with open(WORKSHOP_MAPS_FILE, 'r') as f:
             return json.load(f)
@@ -1061,7 +1080,7 @@ def api_export_config():
     name = data.get('name', 'custom_config')
     cvars = data.get('cvars', {})
 
-    config_dir = os.path.join(os.path.dirname(__file__), 'server_configs')
+    config_dir = data_path('server_configs')
     os.makedirs(config_dir, exist_ok=True)
 
     filename = f"{name}.cfg"
@@ -1086,7 +1105,8 @@ def api_export_config():
 @app.route('/api/saved_configs', methods=['GET'])
 def api_saved_configs():
     """List saved config files."""
-    config_dir = os.path.join(os.path.dirname(__file__), 'server_configs')
+    config_dir = data_path('server_configs')
+    _init_server_configs(config_dir)
     os.makedirs(config_dir, exist_ok=True)
 
     configs = []
@@ -1105,7 +1125,7 @@ def api_saved_configs():
 @app.route('/api/load_config/<filename>', methods=['GET'])
 def api_load_config(filename):
     """Load a saved config file content."""
-    config_dir = os.path.join(os.path.dirname(__file__), 'server_configs')
+    config_dir = data_path('server_configs')
     filepath = os.path.join(config_dir, filename)
 
     if not os.path.exists(filepath):
@@ -1120,7 +1140,7 @@ def api_load_config(filename):
 @app.route('/api/delete_config/<filename>', methods=['DELETE'])
 def api_delete_config(filename):
     """Delete a saved config file."""
-    config_dir = os.path.join(os.path.dirname(__file__), 'server_configs')
+    config_dir = data_path('server_configs')
     filepath = os.path.join(config_dir, filename)
 
     if not os.path.exists(filepath):
@@ -1135,17 +1155,29 @@ def api_delete_config(filename):
 
 # ============== HELPERS ==============
 
+def _init_server_configs(config_dir: str):
+    """Copy bundled server_configs to writable dir on first run (Vercel)."""
+    if IS_VERCEL and not os.path.exists(config_dir):
+        src = os.path.join(os.path.dirname(__file__), 'server_configs')
+        if os.path.exists(src):
+            import shutil
+            shutil.copytree(src, config_dir)
+
+
 def save_last_connection(host, port, password):
     """Save last successful connection details."""
-    config_path = os.path.join(os.path.dirname(__file__), 'last_connection.json')
+    config_path = data_path('last_connection.json')
     data = {"host": host, "port": port, "password": password}
-    with open(config_path, 'w') as f:
-        json.dump(data, f)
+    try:
+        with open(config_path, 'w') as f:
+            json.dump(data, f)
+    except OSError:
+        logger.warning("Could not save last connection (read-only filesystem)")
 
 
 def load_last_connection():
     """Load last connection details."""
-    config_path = os.path.join(os.path.dirname(__file__), 'last_connection.json')
+    config_path = data_path('last_connection.json')
     if os.path.exists(config_path):
         with open(config_path, 'r') as f:
             return json.load(f)
