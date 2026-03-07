@@ -741,6 +741,59 @@ body {
     border-left: 3px solid var(--accent);
 }
 
+/* ---- Command / CVar Search ---- */
+.console-search {
+    margin-top: 8px;
+    border-top: 1px solid var(--border-dark);
+    padding-top: 8px;
+}
+
+.search-row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.search-results {
+    margin-top: 6px;
+    max-height: 350px;
+    overflow-y: auto;
+    background: var(--secondary-bg);
+    border: 1px solid;
+    border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+    padding: 4px;
+}
+
+.search-header {
+    color: var(--accent);
+    font-size: 0.8125rem;
+    padding: 3px 4px;
+    border-bottom: 1px solid var(--border-dark);
+    margin-bottom: 2px;
+}
+
+.search-result-item {
+    font-family: 'Courier New', monospace;
+    font-size: 0.8125rem;
+    color: var(--text-3);
+    padding: 2px 4px;
+    cursor: pointer;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.search-result-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+/* ---- Scheduled Task Actions ---- */
+.sched-actions {
+    display: flex;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
 @keyframes toastIn {
     from { opacity: 0; transform: translateX(20px); }
     to { opacity: 1; transform: translateX(0); }
@@ -887,4 +940,111 @@ body {
     color: var(--accent);
     font-family: 'Courier New', Courier, monospace;
     word-break: break-all;
+}
+
+/* ============================================================
+   MONITOR TAB — Performance, GOTV, Backups, Scheduler
+   ============================================================ */
+
+/* ---- Performance Grid ---- */
+.perf-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+}
+
+.perf-card {
+    border: 1px solid;
+    border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+    padding: 8px 10px;
+    text-align: center;
+}
+
+.perf-label {
+    font-size: 0.75rem;
+    color: var(--text-3);
+    margin-bottom: 4px;
+}
+
+.perf-value {
+    font-size: 1.125rem;
+    color: #7fff7f;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* ---- Raw Output ---- */
+.raw-output {
+    background: #1a1a1a;
+    padding: 8px;
+    border: 1px solid var(--border-dark);
+    overflow-x: auto;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* ---- Ban Management ---- */
+.ban-section {
+    margin-bottom: 6px;
+}
+
+.ban-list {
+    margin-top: 4px;
+}
+
+.ban-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 6px;
+    font-size: 0.8125rem;
+    border-bottom: 1px solid rgba(41, 44, 33, 0.3);
+    font-family: 'Courier New', Courier, monospace;
+    gap: 8px;
+}
+
+.ban-entry span {
+    word-break: break-all;
+}
+
+/* ---- Scheduled Tasks ---- */
+.sched-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    border: 1px solid;
+    border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+    margin-bottom: 6px;
+    gap: 10px;
+}
+
+.sched-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.sched-cmd {
+    color: var(--accent);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.875rem;
+    word-break: break-all;
+}
+
+.sched-meta {
+    color: var(--text-3);
+    font-size: 0.75rem;
+}
+
+/* ---- Player Actions Wider ---- */
+.player-actions {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+}
+
+.player-actions .cs-btn {
+    font-size: 0.75rem;
+    padding: 2px 5px;
+    min-width: unset;
 }

@@ -12,6 +12,7 @@ const App = (() => {
     let historyIndex = -1;
     let statusInterval = null;
     let autoRefreshInterval = null;
+    let statsInterval = null;
     let cvarDefinitions = {};
     let cvarServerValues = {};
     let cvarLocalEdits = {};
@@ -316,6 +317,10 @@ const App = (() => {
                 <td class="player-actions">
                     <button class="cs-btn" data-action="kick" data-pid="${escapeHtml(p.id)}">Kick</button>
                     <button class="cs-btn" data-action="ban" data-pid="${escapeHtml(p.id)}">Ban</button>
+                    <button class="cs-btn" data-action="move-ct" data-pid="${escapeHtml(p.id)}" title="Move to CT">CT</button>
+                    <button class="cs-btn" data-action="move-t" data-pid="${escapeHtml(p.id)}" title="Move to T">T</button>
+                    <button class="cs-btn" data-action="move-spec" data-pid="${escapeHtml(p.id)}" title="Move to Spec">Spec</button>
+                    <button class="cs-btn" data-action="mute" data-pid="${escapeHtml(p.id)}" title="Mute">Mute</button>
                 </td>
             </tr>`;
         });
@@ -330,6 +335,18 @@ const App = (() => {
         });
         c.querySelectorAll('[data-action="ban"]').forEach(btn => {
             btn.addEventListener('click', () => banPlayer(btn.dataset.pid));
+        });
+        c.querySelectorAll('[data-action="move-ct"]').forEach(btn => {
+            btn.addEventListener('click', () => movePlayer(btn.dataset.pid, '3'));
+        });
+        c.querySelectorAll('[data-action="move-t"]').forEach(btn => {
+            btn.addEventListener('click', () => movePlayer(btn.dataset.pid, '2'));
+        });
+        c.querySelectorAll('[data-action="move-spec"]').forEach(btn => {
+            btn.addEventListener('click', () => movePlayer(btn.dataset.pid, '1'));
+        });
+        c.querySelectorAll('[data-action="mute"]').forEach(btn => {
+            btn.addEventListener('click', () => mutePlayer(btn.dataset.pid));
         });
     }
 
@@ -410,7 +427,7 @@ const App = (() => {
                 </div>
                 <div class="workshop-card-actions">
                     <button class="cs-btn" data-ws-action="load" data-wsid="${escapeHtml(m.id)}">Load</button>
-                    <a class="cs-btn" href="${m.url}" target="_blank" style="text-decoration:none">Steam</a>
+                    <a class="cs-btn" href="https://steamcommunity.com/sharedfiles/filedetails/?id=${encodeURIComponent(m.id)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">Steam</a>
                     <button class="cs-btn" data-ws-action="remove" data-wsid="${escapeHtml(m.id)}">Remove</button>
                 </div>
             </div>`;
@@ -1003,7 +1020,362 @@ const App = (() => {
         }
     }
 
+    // ──── Move & Mute Players ────
+    async function movePlayer(id, team) {
+        if (!connected) { toast('Not connected', 'error'); return; }
+        const teamNames = { '1': 'Spectator', '2': 'Terrorist', '3': 'Counter-Terrorist' };
+        const r = await api('/api/move_player', {
+            method: 'POST',
+            body: JSON.stringify({ player_id: id, team })
+        });
+        toast(r.success ? `Player moved to ${teamNames[team]}` : (r.error || 'Failed'), r.success ? 'success' : 'error');
+        if (r.success) refreshPlayers();
+    }
+
+    async function mutePlayer(id) {
+        if (!connected) return;
+        const r = await api('/api/mute_player', {
+            method: 'POST',
+            body: JSON.stringify({ player_id: id, mute: true })
+        });
+        toast(r.success ? 'Player muted' : (r.error || 'Failed'), r.success ? 'success' : 'error');
+    }
+
+    // ──── Ban Management ────
+    async function refreshBans() {
+        if (!connected) { toast('Not connected', 'error'); return; }
+        const r = await api('/api/bans');
+        const c = $('banListContainer');
+        if (!r.success) {
+            c.innerHTML = `<div class="info-placeholder">${escapeHtml(r.error || 'Failed to load bans')}</div>`;
+            return;
+        }
+
+        let html = '';
+        if (r.steamid_bans.length > 0) {
+            html += '<div class="ban-section"><strong style="color:var(--accent)">SteamID Bans:</strong>';
+            html += '<div class="ban-list">';
+            r.steamid_bans.forEach(b => {
+                html += `<div class="ban-entry">
+                    <span>${escapeHtml(b)}</span>
+                    <button class="cs-btn" data-unban-sid="${escapeHtml(b.split(' ')[0])}" title="Remove ban">Unban</button>
+                </div>`;
+            });
+            html += '</div></div>';
+        }
+        if (r.ip_bans.length > 0) {
+            html += '<div class="ban-section" style="margin-top:8px"><strong style="color:var(--accent)">IP Bans:</strong>';
+            html += '<div class="ban-list">';
+            r.ip_bans.forEach(b => {
+                html += `<div class="ban-entry">
+                    <span>${escapeHtml(b)}</span>
+                    <button class="cs-btn" data-unban-ip="${escapeHtml(b.split(' ')[0])}" title="Remove IP ban">Unban</button>
+                </div>`;
+            });
+            html += '</div></div>';
+        }
+        if (r.steamid_bans.length === 0 && r.ip_bans.length === 0) {
+            html = '<div class="info-placeholder">No active bans</div>';
+        }
+        c.innerHTML = html;
+
+        // Wire unban buttons
+        c.querySelectorAll('[data-unban-sid]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const sid = btn.dataset.unbanSid;
+                const rr = await api('/api/unban', { method: 'POST', body: JSON.stringify({ steamid: sid }) });
+                toast(rr.success ? 'Unbanned' : (rr.error || 'Failed'), rr.success ? 'success' : 'error');
+                if (rr.success) refreshBans();
+            });
+        });
+        c.querySelectorAll('[data-unban-ip]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const ip = btn.dataset.unbanIp;
+                const rr = await api('/api/unban_ip', { method: 'POST', body: JSON.stringify({ ip }) });
+                toast(rr.success ? 'IP unbanned' : (rr.error || 'Failed'), rr.success ? 'success' : 'error');
+                if (rr.success) refreshBans();
+            });
+        });
+    }
+
+    function showUnbanForm() {
+        const sid = prompt('Enter SteamID to unban (STEAM_X:Y:Z or [U:1:XXXXXXX]):');
+        if (!sid) return;
+        api('/api/unban', { method: 'POST', body: JSON.stringify({ steamid: sid.trim() }) })
+            .then(r => {
+                toast(r.success ? 'Unbanned' : (r.error || 'Failed'), r.success ? 'success' : 'error');
+                if (r.success) refreshBans();
+            });
+    }
+
+    function showIpBanForm() {
+        const ip = prompt('Enter IP to ban:');
+        if (!ip) return;
+        const dur = prompt('Ban duration in minutes (0 = permanent):', '0');
+        if (dur === null) return;
+        api('/api/ban_ip', { method: 'POST', body: JSON.stringify({ ip: ip.trim(), duration: parseInt(dur) || 0 }) })
+            .then(r => {
+                toast(r.success ? `IP ${ip} banned` : (r.error || 'Failed'), r.success ? 'success' : 'error');
+                if (r.success) refreshBans();
+            });
+    }
+
+    function showIpUnbanForm() {
+        const ip = prompt('Enter IP to unban:');
+        if (!ip) return;
+        api('/api/unban_ip', { method: 'POST', body: JSON.stringify({ ip: ip.trim() }) })
+            .then(r => {
+                toast(r.success ? 'IP unbanned' : (r.error || 'Failed'), r.success ? 'success' : 'error');
+                if (r.success) refreshBans();
+            });
+    }
+
+    // ──── Server Performance Stats ────
+    async function refreshStats() {
+        if (!connected) { toast('Not connected', 'error'); return; }
+        const r = await api('/api/server/stats');
+        const c = $('perfStatsContent');
+        const raw = $('rawStatsOutput');
+
+        if (!r.success) {
+            c.innerHTML = `<div class="info-placeholder">${escapeHtml(r.error || 'Failed')}</div>`;
+            return;
+        }
+
+        const s = r.stats;
+        let html = '<div class="perf-grid">';
+        if (s.cpu) html += `<div class="perf-card"><div class="perf-label">CPU Usage</div><div class="perf-value">${escapeHtml(s.cpu)}%</div></div>`;
+        if (s.fps) html += `<div class="perf-card"><div class="perf-label">Server FPS</div><div class="perf-value">${escapeHtml(s.fps)}</div></div>`;
+        if (s.tick) html += `<div class="perf-card"><div class="perf-label">Tick Rate</div><div class="perf-value">${escapeHtml(s.tick)}</div></div>`;
+        if (s.players) html += `<div class="perf-card"><div class="perf-label">Players</div><div class="perf-value">${escapeHtml(s.players)}</div></div>`;
+        if (s.sv_ms) html += `<div class="perf-card"><div class="perf-label">Server ms</div><div class="perf-value">${escapeHtml(s.sv_ms)}</div></div>`;
+        if (s.var_ms) html += `<div class="perf-card"><div class="perf-label">Variance</div><div class="perf-value">&plusmn;${escapeHtml(s.var_ms)} ms</div></div>`;
+        if (s.net_in) html += `<div class="perf-card"><div class="perf-label">Net In</div><div class="perf-value">${escapeHtml(s.net_in)}</div></div>`;
+        if (s.net_out) html += `<div class="perf-card"><div class="perf-label">Net Out</div><div class="perf-value">${escapeHtml(s.net_out)}</div></div>`;
+        if (s.uptime) html += `<div class="perf-card"><div class="perf-label">Uptime (min)</div><div class="perf-value">${escapeHtml(s.uptime)}</div></div>`;
+        if (s.maps) html += `<div class="perf-card"><div class="perf-label">Maps Played</div><div class="perf-value">${escapeHtml(s.maps)}</div></div>`;
+        html += '</div>';
+        c.innerHTML = html;
+
+        if (raw && s.raw) {
+            raw.textContent = s.raw;
+        }
+    }
+
+    function toggleStatsPolling() {
+        const btn = $('btn-stats-auto');
+        if (statsInterval) {
+            clearInterval(statsInterval);
+            statsInterval = null;
+            btn.textContent = 'Auto: OFF';
+            toast('Stats auto-refresh disabled', 'info');
+        } else {
+            refreshStats();
+            statsInterval = setInterval(refreshStats, 5000);
+            btn.textContent = 'Auto: ON';
+            toast('Stats auto-refresh every 5s', 'success');
+        }
+    }
+
+    // ──── GOTV Controls ────
+    async function refreshGotvStatus() {
+        if (!connected) { toast('Not connected', 'error'); return; }
+        const r = await api('/api/gotv/status');
+        const c = $('gotvStatusContent');
+        if (!r.success) {
+            c.innerHTML = `<div class="info-placeholder">${escapeHtml(r.error || 'Failed')}</div>`;
+            return;
+        }
+        const g = r.gotv;
+        let html = '<table class="info-table">';
+        html += `<tr><td>Status</td><td style="color:${g.enabled ? '#7fff7f' : '#ff7f7f'}">${g.enabled ? 'Active' : 'Not Active'}</td></tr>`;
+        // Show parsed details
+        if (g.raw) {
+            const lines = g.raw.split('\n');
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed && trimmed.includes(':')) {
+                    const [key, ...rest] = trimmed.split(':');
+                    html += `<tr><td>${escapeHtml(key.trim())}</td><td>${escapeHtml(rest.join(':').trim())}</td></tr>`;
+                }
+            }
+        }
+        html += '</table>';
+        c.innerHTML = html;
+    }
+
+    async function gotvRecord() {
+        if (!connected) { toast('Not connected', 'error'); return; }
+        const name = ($('inp-gotv-name') || {}).value || '';
+        const r = await api('/api/gotv/record', {
+            method: 'POST',
+            body: JSON.stringify({ name: name.trim() })
+        });
+        toast(r.success ? (r.response || 'Recording started') : (r.error || 'Failed'), r.success ? 'success' : 'error');
+        if (r.success) refreshGotvStatus();
+    }
+
+    async function gotvStop() {
+        if (!connected) { toast('Not connected', 'error'); return; }
+        const r = await api('/api/gotv/stop', { method: 'POST' });
+        toast(r.success ? (r.response || 'Recording stopped') : (r.error || 'Failed'), r.success ? 'success' : 'error');
+        if (r.success) refreshGotvStatus();
+    }
+
+    // ──── Round Backups ────
+    async function refreshBackups() {
+        if (!connected) { toast('Not connected', 'error'); return; }
+        const r = await api('/api/round_backup');
+        const c = $('backupStatusContent');
+        if (!r.success) {
+            c.innerHTML = `<div class="info-placeholder">${escapeHtml(r.error || 'Failed')}</div>`;
+            return;
+        }
+        let html = '<table class="info-table">';
+        html += `<tr><td>Last Backup</td><td>${escapeHtml(r.last_backup || 'None')}</td></tr>`;
+        html += `<tr><td>Auto Backup</td><td>${escapeHtml(r.auto_backup_raw || 'Unknown')}</td></tr>`;
+        html += '</table>';
+        c.innerHTML = html;
+
+        // Pre-fill the restore input if we have a last backup
+        if (r.last_backup) {
+            const inp = $('inp-backup-file');
+            if (inp && !inp.value) inp.value = r.last_backup;
+        }
+    }
+
+    async function restoreBackup() {
+        if (!connected) { toast('Not connected', 'error'); return; }
+        const filename = ($('inp-backup-file') || {}).value || '';
+        if (!filename.trim()) { toast('Enter a backup filename', 'error'); return; }
+        if (!confirm(`Restore round from backup "${filename.trim()}"? This will affect the current match.`)) return;
+        const r = await api('/api/round_backup/restore', {
+            method: 'POST',
+            body: JSON.stringify({ filename: filename.trim() })
+        });
+        toast(r.success ? (r.response || 'Backup restored') : (r.error || 'Failed'), r.success ? 'success' : 'error');
+    }
+
+    // ──── Scheduled Tasks ────
+    async function refreshScheduledTasks() {
+        const r = await api('/api/scheduled_tasks');
+        const c = $('scheduledTasksContainer');
+        if (!r.success || !r.tasks || r.tasks.length === 0) {
+            c.innerHTML = '<div class="info-placeholder">No scheduled tasks</div>';
+            return;
+        }
+        let html = '';
+        r.tasks.forEach(t => {
+            const hasTimer = t.run_count > 0 || t.last_run;
+            const statusLabel = hasTimer ? 'Running' : 'Saved (paused)';
+            const statusColor = hasTimer ? '#7fff7f' : 'var(--accent)';
+            html += `<div class="sched-card">
+                <div class="sched-info">
+                    <span class="sched-cmd">${escapeHtml(t.command)}</span>
+                    <span class="sched-meta">${t.repeat ? 'Repeat' : 'Once'} every ${t.interval}s | Runs: ${t.run_count} | Last: ${escapeHtml(t.last_run || 'pending')} | <span style="color:${statusColor}">${statusLabel}</span></span>
+                </div>
+                <div class="sched-actions">
+                    <button class="cs-btn" data-restart-task="${escapeHtml(t.id)}">Restart</button>
+                    <button class="cs-btn" data-cancel-task="${escapeHtml(t.id)}">Cancel</button>
+                </div>
+            </div>`;
+        });
+        c.innerHTML = html;
+
+        c.querySelectorAll('[data-cancel-task]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const tid = btn.dataset.cancelTask;
+                const rr = await api(`/api/scheduled_tasks/${encodeURIComponent(tid)}`, { method: 'DELETE' });
+                toast(rr.success ? 'Task cancelled' : (rr.error || 'Failed'), rr.success ? 'success' : 'error');
+                refreshScheduledTasks();
+            });
+        });
+        c.querySelectorAll('[data-restart-task]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const tid = btn.dataset.restartTask;
+                const rr = await api(`/api/scheduled_tasks/${encodeURIComponent(tid)}/restart`, { method: 'POST' });
+                toast(rr.success ? (rr.message || 'Task restarted') : (rr.error || 'Failed'), rr.success ? 'success' : 'error');
+                refreshScheduledTasks();
+            });
+        });
+    }
+
+    async function addScheduledTask() {
+        if (!connected) { toast('Not connected', 'error'); return; }
+        const cmd = ($('inp-sched-cmd') || {}).value || '';
+        const interval = parseInt(($('inp-sched-interval') || {}).value) || 60;
+        const repeat = ($('inp-sched-repeat') || {}).value === 'true';
+
+        if (!cmd.trim()) { toast('Enter a command', 'error'); return; }
+
+        const r = await api('/api/scheduled_tasks', {
+            method: 'POST',
+            body: JSON.stringify({ command: cmd.trim(), interval, repeat })
+        });
+        toast(r.success ? (r.message || 'Task scheduled') : (r.error || 'Failed'), r.success ? 'success' : 'error');
+        if (r.success) {
+            $('inp-sched-cmd').value = '';
+            refreshScheduledTasks();
+        }
+    }
+
     // ──── Initialization ────
+
+    // ──── Command / CVar Search ────
+    async function searchCommands() {
+        if (!connected) { toast('Not connected', 'error'); return; }
+        const query = ($('inp-cmd-search') || {}).value || '';
+        if (!query.trim()) { toast('Enter a search term', 'error'); return; }
+        const r = await api('/api/find', {
+            method: 'POST',
+            body: JSON.stringify({ query: query.trim() })
+        });
+        const container = $('searchResults');
+        if (!r.success) {
+            container.style.display = 'block';
+            container.innerHTML = `<div class="info-placeholder">${escapeHtml(r.error || 'Search failed')}</div>`;
+            return;
+        }
+        if (!r.results || r.results.length === 0) {
+            container.style.display = 'block';
+            container.innerHTML = '<div class="info-placeholder">No results found</div>';
+            return;
+        }
+        let html = `<div class="search-header">${r.count} result(s) for "${escapeHtml(query.trim())}"</div>`;
+        r.results.forEach(line => {
+            html += `<div class="search-result-item" onclick="App.sendCommand('${escapeHtml(line.split(' ')[0]).replace(/'/g, '')}')">${escapeHtml(line)}</div>`;
+        });
+        container.style.display = 'block';
+        container.innerHTML = html;
+    }
+
+    async function dumpCvarlist() {
+        if (!connected) { toast('Not connected', 'error'); return; }
+        toast('Fetching full cvar list...', 'info');
+        const r = await api('/api/cvarlist');
+        const container = $('searchResults');
+        if (!r.success) {
+            container.style.display = 'block';
+            container.innerHTML = `<div class="info-placeholder">${escapeHtml(r.error || 'Failed')}</div>`;
+            return;
+        }
+        container.style.display = 'block';
+        container.innerHTML = `<div class="search-header">${r.count} commands/cvars on server</div><pre class="raw-output" style="max-height:400px;overflow:auto;margin:0">${escapeHtml(r.raw)}</pre>`;
+    }
+
+    // ──── Workshop Collection ────
+    async function loadWorkshopCollection() {
+        if (!connected) { toast('Not connected', 'error'); return; }
+        const val = ($('inp-ws-collection') || {}).value || '';
+        if (!val.trim()) { toast('Enter a collection ID or URL', 'error'); return; }
+        const r = await api('/api/workshop/collection', {
+            method: 'POST',
+            body: JSON.stringify({ collection_id: val.trim() })
+        });
+        toast(r.success ? (r.response || 'Collection loading') : (r.error || 'Failed'), r.success ? 'success' : 'error');
+        if (r.success) $('inp-ws-collection').value = '';
+    }
+
     async function init() {
         // Setup tab system
         initTabs();
@@ -1032,6 +1404,7 @@ const App = (() => {
             setConnected(true);
             startStatusPolling();
             refreshServerInfo();
+            refreshScheduledTasks();
             toast('Server connected', 'success');
             setStatus(`Connected to ${status.host}:${status.port}`);
         } else if (lc.success && lc.connection && lc.connection.host && lc.connection.password) {
@@ -1049,6 +1422,7 @@ const App = (() => {
                 setConnected(true);
                 startStatusPolling();
                 refreshServerInfo();
+                refreshScheduledTasks();
                 toast('Auto-connected to server', 'success');
                 setStatus(`Connected to ${lc.connection.host}:${lc.connection.port || 27015}`);
             } else {
@@ -1074,10 +1448,13 @@ const App = (() => {
         refreshPlayers,
         kickPlayer,
         banPlayer,
+        movePlayer,
+        mutePlayer,
         changeMap,
         addWorkshopMap,
         removeWorkshopMap,
         loadWorkshopMap,
+        loadWorkshopCollection,
         loadAllServerValues,
         onSettingChange,
         applySingleSetting,
@@ -1094,6 +1471,21 @@ const App = (() => {
         broadcastMessage,
         execCustomConfig,
         saveCustomConfig,
-        deleteConfig
+        deleteConfig,
+        refreshBans,
+        showUnbanForm,
+        showIpBanForm,
+        showIpUnbanForm,
+        refreshStats,
+        toggleStatsPolling,
+        refreshGotvStatus,
+        gotvRecord,
+        gotvStop,
+        refreshBackups,
+        restoreBackup,
+        refreshScheduledTasks,
+        addScheduledTask,
+        searchCommands,
+        dumpCvarlist
     };
 })();

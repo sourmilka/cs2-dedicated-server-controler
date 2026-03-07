@@ -35,6 +35,7 @@
             <button class="tab-btn" data-tab="quick">Quick Cmds</button>
             <button class="tab-btn" data-tab="templates">Templates</button>
             <button class="tab-btn" data-tab="configs">Configs</button>
+            <button class="tab-btn" data-tab="monitor">Monitor</button>
         </div>
 
         <!-- ====== TAB PANELS ====== -->
@@ -163,10 +164,17 @@
                             <div class="ref-item" onclick="App.sendCommand('banlist')"><span class="ref-cmd">banlist</span><span class="ref-desc">Show ban list</span></div>
                         </div>
                     </div>
+                    <!-- Command / CVar Search -->
+                    <div class="console-search">
+                        <div class="search-row">
+                            <input type="text" class="cs-input" id="inp-cmd-search" placeholder="Search commands/cvars on server (e.g. gravity, overtime)..." style="flex:1" onkeydown="if(event.key==='Enter')App.searchCommands()">
+                            <button class="cs-btn" onclick="App.searchCommands()">Search Server</button>
+                            <button class="cs-btn" onclick="App.dumpCvarlist()">Dump All CVars</button>
+                        </div>
+                        <div id="searchResults" class="search-results" style="display:none"></div>
+                    </div>
                 </div>
             </div>
-
-            <!-- ==================== PLAYERS ==================== -->
             <div class="tab-panel" id="panel-players">
                 <div class="panel-header">
                     <span class="panel-header-text">Player Management</span>
@@ -206,6 +214,22 @@
                 <div id="playersContainer">
                     <div class="info-placeholder">Connect to server and click Refresh</div>
                 </div>
+
+                <!-- Ban Management -->
+                <div class="cs16-box" style="margin-top:10px">
+                    <div class="box-title">Ban Management</div>
+                    <div class="box-content">
+                        <div class="form-row btn-row">
+                            <button class="cs-btn" onclick="App.refreshBans()">Load Ban List</button>
+                            <button class="cs-btn" onclick="App.showUnbanForm()">Unban SteamID</button>
+                            <button class="cs-btn" onclick="App.showIpBanForm()">Ban IP</button>
+                            <button class="cs-btn" onclick="App.showIpUnbanForm()">Unban IP</button>
+                        </div>
+                        <div id="banListContainer" style="margin-top:8px">
+                            <div class="info-placeholder">Click "Load Ban List" to view bans</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- ==================== MAPS ==================== -->
@@ -235,6 +259,21 @@
                             <a class="cs-btn steam-browse-btn" href="https://steamcommunity.com/workshop/browse/?appid=730&searchtext=&childpublishedfileid=0&browsesort=textsearch&section=readytouseitems&created_date_range_filter_start=0&created_date_range_filter_end=0&updated_date_range_filter_start=0&updated_date_range_filter_end=0" target="_blank" style="text-decoration:none;display:inline-block">
                                 Browse CS2 Workshop on Steam
                             </a>
+                        </div>
+                    </div>
+
+                    <!-- Load Workshop Collection -->
+                    <div class="cs16-box" style="margin-bottom:12px">
+                        <div class="box-title">Load Workshop Collection</div>
+                        <div class="box-content">
+                            <p style="color:var(--text-3);font-size:0.8125rem;margin:0 0 6px">Load an entire Steam Workshop collection on the server at once.</p>
+                            <div class="form-row">
+                                <label class="cs-input__label">Collection ID or URL</label>
+                                <input type="text" class="cs-input" id="inp-ws-collection" placeholder="Steam Workshop collection URL or ID" style="width:300px">
+                            </div>
+                            <div class="form-row btn-row">
+                                <button class="cs-btn" onclick="App.loadWorkshopCollection()">Load Collection</button>
+                            </div>
                         </div>
                     </div>
 
@@ -347,6 +386,121 @@
                             <button class="cs-btn" onclick="App.execConfigContent()">Execute on Server</button>
                             <button class="cs-btn" onclick="App.deleteConfig()">Delete</button>
                             <button class="cs-btn" onclick="document.getElementById('configViewer').style.display='none'">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== MONITOR ==================== -->
+            <div class="tab-panel" id="panel-monitor">
+                <div class="panel-header">
+                    <span class="panel-header-text">Server Monitor</span>
+                    <div class="panel-header-actions">
+                        <button class="cs-btn" onclick="App.refreshStats()">Refresh Stats</button>
+                        <button class="cs-btn" id="btn-stats-auto" onclick="App.toggleStatsPolling()">Auto: OFF</button>
+                    </div>
+                </div>
+                <hr class="cs-hr">
+
+                <div class="sub-tab-bar">
+                    <button class="sub-tab-btn active" data-subtab="perf" data-group="monitor">Performance</button>
+                    <button class="sub-tab-btn" data-subtab="gotv" data-group="monitor">GOTV</button>
+                    <button class="sub-tab-btn" data-subtab="backups" data-group="monitor">Round Backups</button>
+                    <button class="sub-tab-btn" data-subtab="scheduler" data-group="monitor">Scheduled Tasks</button>
+                </div>
+
+                <!-- Performance -->
+                <div class="sub-tab-panel active" id="subpanel-perf" data-group="monitor">
+                    <div class="cs16-box">
+                        <div class="box-title">Server Performance</div>
+                        <div class="box-content" id="perfStatsContent">
+                            <div class="info-placeholder">Click "Refresh Stats" or enable auto-refresh</div>
+                        </div>
+                    </div>
+                    <div class="cs16-box">
+                        <div class="box-title">Raw Stats Output</div>
+                        <div class="box-content">
+                            <pre class="raw-output" id="rawStatsOutput" style="margin:0;font-size:0.8125rem;color:var(--text-3);white-space:pre-wrap">No data</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GOTV -->
+                <div class="sub-tab-panel" id="subpanel-gotv" data-group="monitor">
+                    <div class="cs16-box">
+                        <div class="box-title">GOTV Status</div>
+                        <div class="box-content" id="gotvStatusContent">
+                            <div class="info-placeholder">Click Refresh to check GOTV</div>
+                        </div>
+                    </div>
+                    <div class="cs16-box">
+                        <div class="box-title">GOTV Recording</div>
+                        <div class="box-content">
+                            <div class="form-row">
+                                <label class="cs-input__label">Demo Name</label>
+                                <input type="text" class="cs-input" id="inp-gotv-name" placeholder="demo_name (optional)" style="width:220px">
+                            </div>
+                            <div class="form-row btn-row">
+                                <button class="cs-btn" onclick="App.gotvRecord()">Start Recording</button>
+                                <button class="cs-btn" onclick="App.gotvStop()">Stop Recording</button>
+                                <button class="cs-btn" onclick="App.refreshGotvStatus()">Refresh Status</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Round Backups -->
+                <div class="sub-tab-panel" id="subpanel-backups" data-group="monitor">
+                    <div class="cs16-box">
+                        <div class="box-title">Round Backup Status</div>
+                        <div class="box-content" id="backupStatusContent">
+                            <div class="info-placeholder">Click Refresh to check backups</div>
+                        </div>
+                    </div>
+                    <div class="cs16-box">
+                        <div class="box-title">Restore Round</div>
+                        <div class="box-content">
+                            <div class="form-row">
+                                <label class="cs-input__label">Backup File</label>
+                                <input type="text" class="cs-input" id="inp-backup-file" placeholder="backup filename" style="width:250px">
+                            </div>
+                            <div class="form-row btn-row">
+                                <button class="cs-btn" onclick="App.restoreBackup()">Restore Backup</button>
+                                <button class="cs-btn" onclick="App.refreshBackups()">Check Backups</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scheduled Tasks -->
+                <div class="sub-tab-panel" id="subpanel-scheduler" data-group="monitor">
+                    <div class="cs16-box">
+                        <div class="box-title">Add Scheduled Task</div>
+                        <div class="box-content">
+                            <div class="form-row">
+                                <label class="cs-input__label">Command</label>
+                                <input type="text" class="cs-input" id="inp-sched-cmd" placeholder="RCON command to schedule" style="width:250px">
+                            </div>
+                            <div class="form-row">
+                                <label class="cs-input__label">Interval (sec)</label>
+                                <input type="number" class="cs-input" id="inp-sched-interval" value="60" min="5" style="width:100px">
+                            </div>
+                            <div class="form-row">
+                                <label class="cs-input__label">Repeat</label>
+                                <select class="cs-select" id="inp-sched-repeat" style="width:120px">
+                                    <option value="false">Once</option>
+                                    <option value="true">Repeat</option>
+                                </select>
+                            </div>
+                            <div class="form-row btn-row">
+                                <button class="cs-btn" onclick="App.addScheduledTask()">Schedule Task</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="cs16-box">
+                        <div class="box-title">Active Tasks</div>
+                        <div class="box-content" id="scheduledTasksContainer">
+                            <div class="info-placeholder">No scheduled tasks</div>
                         </div>
                     </div>
                 </div>

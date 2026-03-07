@@ -86,6 +86,7 @@ A full-featured web-based control panel for Counter-Strike 2 dedicated servers, 
 | **Frontend** | Vanilla JavaScript (IIFE module pattern) |
 | **Styling** | [cs16.css](https://github.com/ekmas/cs16.css) + custom CSS |
 | **Protocol** | Valve Source RCON (TCP) |
+| **WSGI Server** | waitress (production) |
 | **CORS** | flask-cors |
 
 ---
@@ -108,11 +109,16 @@ cd cs2-dedicated-server-controler
 # Install dependencies
 pip install -r requirements.txt
 
+# (Optional) Set admin password for HTTP Basic Auth
+set CS2_ADMIN_PASSWORD=your_password
+
 # Run the controller
 python app.py
 ```
 
 The web interface will be available at **http://localhost:5000**
+
+> **Security:** Set the `CS2_ADMIN_PASSWORD` environment variable to protect the web interface with HTTP Basic Auth. Without it, anyone with network access can control your server.
 
 ### Connect to Your Server
 
@@ -248,7 +254,9 @@ Add these to your CS2 dedicated server launch options:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `FLASK_PORT` | `5000` | Port for the web interface |
-| `FLASK_DEBUG` | `true` | Enable Flask debug mode |
+| `FLASK_DEBUG` | `false` | Set to `1`/`true`/`yes` to enable Flask debug mode |
+| `CS2_ADMIN_PASSWORD` | *(none)* | Set to enable HTTP Basic Auth on all routes |
+| `SECRET_KEY` | *(random)* | Flask secret key (set for consistent sessions) |
 
 ---
 

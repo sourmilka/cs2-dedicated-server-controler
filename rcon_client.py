@@ -5,6 +5,7 @@ Implements the Valve Source RCON protocol for communicating with CS2 servers.
 
 from __future__ import annotations
 
+import re
 import socket
 import struct
 import threading
@@ -306,14 +307,31 @@ class RCONClient:
         return info
 
     def get_players(self) -> list[dict[str, str]]:
-        """Get list of connected players."""
+        """Get list of connected players from status output."""
         players: list[dict[str, str]] = []
         try:
             status = self.execute("status")
+            # CS2 status player lines look like:
+            #  #1 "PlayerName" STEAM_1:1:12345 connected 12:34 ping 45 ...
+            #  #2 "BotName" BOT connected 00:00
+            player_re = re.compile(
+                r'#(\d+)\s+'           # slot id
+                r'"([^"]+)"\s+'        # name in quotes
+                r'(\S+)'              # steamid or BOT
+            )
             for line in status.split('\n'):
                 line = line.strip()
-                if line.startswith('#'):
-                    # Parse player line
+                m = player_re.search(line)
+                if m:
+                    player: dict[str, str] = {
+                        'id': m.group(1),
+                        'name': m.group(2),
+                        'steamid': m.group(3),
+                        'raw': line
+                    }
+                    players.append(player)
+                elif line.startswith('#') and line != '#end':
+                    # Fallback: split-based parsing for non-standard formats
                     parts = line.split()
                     if len(parts) >= 3 and parts[0] != '#end':
                         player = {
@@ -321,7 +339,6 @@ class RCONClient:
                             'name': ' '.join(parts[1:-1]) if len(parts) > 3 else parts[1],
                             'raw': line
                         }
-                        # Try to extract steamid and other info
                         if 'STEAM_' in line or '[U:' in line:
                             for part in parts:
                                 if 'STEAM_' in part or '[U:' in part:

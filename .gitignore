@@ -38,5 +38,10 @@ last_connection.json
 
 # Vercel
 .vercel/
-.vercel
-.env*.local
+
+# Runtime data
+scheduled_tasks.json
+
+# Test artifacts
+_test_integrity.py
+reference.md
