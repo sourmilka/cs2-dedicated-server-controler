@@ -148,6 +148,27 @@ The controller auto-saves your last connection and will attempt to reconnect on 
 
 ---
 
+## Deploy to Railway
+
+This app requires a **persistent server** (not serverless) for RCON connections, scheduled tasks, and real-time monitoring. [Railway](https://railway.app) is the recommended platform.
+
+### One-Click Deploy
+
+1. Go to [railway.app](https://railway.app) and sign in with GitHub
+2. Click **New Project** → **Deploy from GitHub Repo**
+3. Select `sourmilka/cs2-dedicated-server-controler`
+4. Railway auto-detects the `Procfile` and `requirements.txt`
+5. Set environment variables in the Railway dashboard:
+   - `CS2_ADMIN_PASSWORD` — **required** for public deployments
+   - `SECRET_KEY` — set a random string for session security
+6. Deploy! Railway gives you a URL like `your-app.up.railway.app`
+
+> **Important:** Always set `CS2_ADMIN_PASSWORD` when deploying publicly. Without it, anyone can control your CS2 server.
+
+Railway auto-deploys on every push to `main`.
+
+---
+
 ## Project Structure
 
 ```
@@ -155,6 +176,8 @@ cs2-dedicated-server-controler/
 ├── app.py                  # Flask backend — 49 API routes, 207 CVars, all data
 ├── rcon_client.py          # Valve Source RCON protocol client
 ├── requirements.txt        # Python dependencies
+├── Procfile                # Railway/Heroku process definition
+├── runtime.txt             # Python version for Railway
 ├── templates/
 │   └── index.html          # Main dashboard (9-tab interface)
 ├── static/
@@ -306,7 +329,8 @@ Add these to your CS2 dedicated server launch options:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FLASK_PORT` | `5000` | Port for the web interface |
+| `PORT` | `5000` | Server port (set automatically by Railway) |
+| `FLASK_PORT` | `5000` | Alias for PORT (local development) |
 | `FLASK_DEBUG` | `false` | Set to `1`/`true`/`yes` to enable Flask debug mode |
 | `CS2_ADMIN_PASSWORD` | *(none)* | Set to enable HTTP Basic Auth on all routes |
 | `SECRET_KEY` | *(random)* | Flask secret key (set for consistent sessions) |
