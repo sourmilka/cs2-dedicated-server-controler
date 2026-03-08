@@ -148,24 +148,47 @@ The controller auto-saves your last connection and will attempt to reconnect on 
 
 ---
 
-## Deploy to Railway
+## Deploy to a VPS (Oracle Cloud / Any Server)
 
-This app requires a **persistent server** (not serverless) for RCON connections, scheduled tasks, and real-time monitoring. [Railway](https://railway.app) is the recommended platform.
+This app requires a **persistent server** (not serverless) for RCON connections, scheduled tasks, and real-time monitoring. [Oracle Cloud Free Tier](https://www.oracle.com/cloud/free/) gives you an always-free VM that works perfectly.
 
-### One-Click Deploy
+### One-Command Deploy
 
-1. Go to [railway.app](https://railway.app) and sign in with GitHub
-2. Click **New Project** → **Deploy from GitHub Repo**
-3. Select `sourmilka/cs2-dedicated-server-controler`
-4. Railway auto-detects the `Procfile` and `requirements.txt`
-5. Set environment variables in the Railway dashboard:
-   - `CS2_ADMIN_PASSWORD` — **required** for public deployments
-   - `SECRET_KEY` — set a random string for session security
-6. Deploy! Railway gives you a URL like `your-app.up.railway.app`
+SSH into your Ubuntu 22.04+ server and run:
 
-> **Important:** Always set `CS2_ADMIN_PASSWORD` when deploying publicly. Without it, anyone can control your CS2 server.
+```bash
+curl -sSL https://raw.githubusercontent.com/sourmilka/cs2-dedicated-server-controler/main/deploy.sh | bash
+```
 
-Railway auto-deploys on every push to `main`.
+This automatically:
+- Installs Python, git, and dependencies
+- Clones the repo to `/opt/cs2-controller`
+- Creates a Python virtual environment
+- Opens port 5000 in the firewall
+- Sets up a systemd service (auto-starts on boot)
+
+### After Install
+
+```bash
+# Set your admin password
+sudo nano /opt/cs2-controller/.env.production
+
+# Restart to apply
+sudo systemctl restart cs2-controller
+
+# View logs
+sudo journalctl -u cs2-controller -f
+```
+
+Your controller will be at `http://YOUR_SERVER_IP:5000`
+
+### Update to Latest Version
+
+```bash
+cd /opt/cs2-controller && git pull && sudo systemctl restart cs2-controller
+```
+
+> **Important:** Always set `CS2_ADMIN_PASSWORD` in `.env.production` when deploying publicly. Without it, anyone can control your CS2 server.
 
 ---
 
@@ -176,8 +199,9 @@ cs2-dedicated-server-controler/
 ├── app.py                  # Flask backend — 49 API routes, 207 CVars, all data
 ├── rcon_client.py          # Valve Source RCON protocol client
 ├── requirements.txt        # Python dependencies
-├── Procfile                # Railway/Heroku process definition
-├── runtime.txt             # Python version for Railway
+├── deploy.sh               # One-command VPS/Oracle Cloud installer
+├── Procfile                # Process definition (PaaS compatibility)
+├── runtime.txt             # Python version specification
 ├── templates/
 │   └── index.html          # Main dashboard (9-tab interface)
 ├── static/
