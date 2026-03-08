@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'cs2-server-controller-dev-key-change-me')
-CORS(app, origins=['http://localhost:*', 'http://127.0.0.1:*'])
+CORS(app, origins=['http://localhost:*', 'http://127.0.0.1:*', 'https://*.koyeb.app'])
 
 DATA_DIR = os.path.dirname(__file__) or '.'
 

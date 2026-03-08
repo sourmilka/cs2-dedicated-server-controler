@@ -148,47 +148,26 @@ The controller auto-saves your last connection and will attempt to reconnect on 
 
 ---
 
-## Deploy to a VPS (Oracle Cloud / Any Server)
+## Deploy to Koyeb
 
-This app requires a **persistent server** (not serverless) for RCON connections, scheduled tasks, and real-time monitoring. [Oracle Cloud Free Tier](https://www.oracle.com/cloud/free/) gives you an always-free VM that works perfectly.
+This app requires a **persistent server** (not serverless) for RCON connections, scheduled tasks, and real-time monitoring. [Koyeb](https://www.koyeb.com) is the recommended platform — free tier, always-on, no time limit.
 
-### One-Command Deploy
+### Deploy Steps
 
-SSH into your Ubuntu 22.04+ server and run:
+1. Go to [koyeb.com](https://www.koyeb.com) and sign in with GitHub
+2. Click **Create App** → **GitHub**
+3. Select the repo `sourmilka/cs2-dedicated-server-controler`
+4. Set **Builder** to `buildpack` (auto-detects Python)
+5. Set **Run command** to `python app.py`
+6. Under **Environment variables**, add:
+   - `CS2_ADMIN_PASSWORD` = your password — **required** for public deployments
+   - `SECRET_KEY` = any random string
+7. Pick **Free** instance type and deploy
+8. Koyeb gives you a URL like `your-app-name.koyeb.app`
 
-```bash
-curl -sSL https://raw.githubusercontent.com/sourmilka/cs2-dedicated-server-controler/main/deploy.sh | bash
-```
+> **Important:** Always set `CS2_ADMIN_PASSWORD` when deploying publicly. Without it, anyone can control your CS2 server.
 
-This automatically:
-- Installs Python, git, and dependencies
-- Clones the repo to `/opt/cs2-controller`
-- Creates a Python virtual environment
-- Opens port 5000 in the firewall
-- Sets up a systemd service (auto-starts on boot)
-
-### After Install
-
-```bash
-# Set your admin password
-sudo nano /opt/cs2-controller/.env.production
-
-# Restart to apply
-sudo systemctl restart cs2-controller
-
-# View logs
-sudo journalctl -u cs2-controller -f
-```
-
-Your controller will be at `http://YOUR_SERVER_IP:5000`
-
-### Update to Latest Version
-
-```bash
-cd /opt/cs2-controller && git pull && sudo systemctl restart cs2-controller
-```
-
-> **Important:** Always set `CS2_ADMIN_PASSWORD` in `.env.production` when deploying publicly. Without it, anyone can control your CS2 server.
+Koyeb auto-deploys on every push to `main`.
 
 ---
 
@@ -199,9 +178,8 @@ cs2-dedicated-server-controler/
 ├── app.py                  # Flask backend — 49 API routes, 207 CVars, all data
 ├── rcon_client.py          # Valve Source RCON protocol client
 ├── requirements.txt        # Python dependencies
-├── deploy.sh               # One-command VPS/Oracle Cloud installer
-├── Procfile                # Process definition (PaaS compatibility)
-├── runtime.txt             # Python version specification
+├── Procfile                # Koyeb/Heroku process definition
+├── runtime.txt             # Python version for deployment
 ├── templates/
 │   └── index.html          # Main dashboard (9-tab interface)
 ├── static/
